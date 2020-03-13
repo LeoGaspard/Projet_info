@@ -219,6 +219,32 @@ MODULE lecture
                         theta = 0
                 END IF
         END SUBROUTINE
+        
+!! Variables :
+!!              - Atom : CHARACTER, the atom name before the atomtype assignment (C,B,N,H...)
+!!              - codat : The unit number for the file containing the covalent radius data
+!! Operation :
+!!              Read the codat file to find the covalent radius of a given atome
+!! Output :
+!!              - REAL the value of the covalent radius
+
+
+        REAL FUNCTION get_covalent_radius(atom,codat)
+                CHARACTER(len=2), INTENT(IN) :: atom
+                CHARACTER(len=2)             :: test
+                INTEGER, INTENT(IN)          :: codat
+                INTEGER                      :: i
+
+                REWIND(codat)
+
+                DO i=1,96
+                        READ(codat,*) test,get_covalent_radius
+                        IF(test==atom) THEN
+                                EXIT
+                        END IF
+                END DO
+        END FUNCTION
+END MODULE
 
 
 END MODULE
