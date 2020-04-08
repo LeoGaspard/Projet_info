@@ -102,12 +102,21 @@ MODULE energie
         ! RETURN    :
         !               Real, the force constant
         REAL FUNCTION kangle(a,b,c,nab,nbc)
-                REAL, DIMENSION(11), INTENT(IN) :: a,b,c
-                INTEGER, INTENT(IN)             :: nab,nbc
+                REAL, DIMENSION(11) :: a,b,c
+                INTEGER :: nab,nbc
+                REAL  :: beta,prefactor,endfactor,rterm,rab,rbc,rac,theta0
 
-                kangle = (664.12/(req(a,b,nab)*req(b,c,nbc)))*((a(6)*b(6))/(req(a,c,1)**5))&
-                        &*req(a,b,nab)*req(b,c,nbc)*(req(a,b,nab)*req(b,c,nbc)*(1-COS(b(2)*3.14159265359/180)**2)-req(a,c,1)**2*&
-                        &COS(b(2)*3.14159265359/180))
+                theta0 = b(2)*3.14159265359/180
+                rab = req(a,b,nab)
+                rbc = req(b,c,nbc)
+                rac = SQRT(rab+rbc-2*rab*rbc*COS(theta0))
+                rterm=rab*rbc
+
+                beta = 664.12/rterm
+                prefactor = beta*(a(6)*b(6))/(rac**5)
+                endfactor = 3*rterm*(1-COS(theta0)**2)-req(a,c,1)*rac*COS(theta0)
+
+                kangle =prefactor*rterm*endfactor
         END FUNCTION
 
         ! INPUT     :
@@ -119,16 +128,17 @@ MODULE energie
         ! RETURN    :
         !               Real, the energy
         REAL FUNCTION eangle(a,b,c,nab,nbc,theta)
-                REAL, DIMENSION(11), INTENT(IN)  :: a,b,c
-                INTEGER, INTENT(IN)              :: nab,nbc
-                REAL, INTENT(IN)                 :: theta
-                REAL                             :: c0, c1, c2
+                REAL, DIMENSION(11) :: a,b,c
+                INTEGER :: nab,nbc
+                REAL :: theta,theta0, c0, c1, c2
 
-                c2 = 1/(4*SIN(b(2)*3.14159265359/180)**2)
-                c1 = -4*c2*COS(b(2)*3.14159265359/180)
-                c0 = c2*(2*COS(b(2)*3.14159265359/180)**2+1)
+                theta0 = b(2)*3.14159265359/180
 
-                eangle = kangle(a,b,c,nab,nbc)*(c0+c1*COS(theta)+c2*COS(theta)**2)
+                c2 = 1/(4*SIN(theta0)**2)
+                c1 = -4*c2*COS(theta0)
+                c0 = c2*(2*COS(theta0)**2+1)
+
+                eangle = kangle(a,b,c,nab,nbc)*(c0+c1*COS(theta)+c2*COS(2*theta))
         END FUNCTION
 
         ! INPUT     :
@@ -153,7 +163,7 @@ MODULE energie
 
 
                 DO i=1,SIZE(names)
-                        DO j=i,SIZE(names)
+                        DO j=1,SIZE(names)
                                 IF(B(i,j)/=0) THEN
                                         DO k=1,SIZE(names)
                                                 IF(k/=i .AND. B(j,k)/=0) THEN
@@ -182,6 +192,100 @@ MODULE energie
                                 END IF
                         END DO
                 END DO
+                angle_energy = angle_energy/2
+        END FUNCTION
 
+        ! INPUT :
+        !		- a, b : list of reals, UFF properties for atom a and b
+        ! OPERATION :
+        !		Compute the well depth according to UFF
+        ! RETURN :
+        !		Real, the well depth in kcal/mol
+        REAL FUNCTION wd(a,b)
+        	REAL, DIMENSION(11), INTENT(IN) :: a,b
+        
+                wd = SQRT(a(4)*b(4))
+        END FUNCTION
+        
+        ! INPUT :
+        !		- a, b : list of reals, UFF properties for atom a and b 
+        ! OPERATION :
+        !		Compute the Van Der Waals bond length
+        ! RETURN :
+        !		Real, the Van Der Waals bond lenght in Angström
+        REAL FUNCTION vdwl(a,b)
+        	REAL, DIMENSION(11), INTENT(IN) :: a,b
+                
+                vdwl = SQRT(a(3)*b(3))
+        END FUNCTION
+        
+        ! INPUT : 
+        !		- a, b : list of reals, UFF properties for atom a and b
+        !		- d    : real, distance between a and b
+        ! OPERATION :
+        !		Compute the Van Der Waals energy between two atoms
+        ! RETURN :
+        !		Real, the Van Der Waals energy 
+        REAL FUNCTION evdw(a,b,d)
+        
+        	REAL, DIMENSION(11), INTENT(IN) :: a,b
+        	REAL, INTENT(IN)                :: d
+                REAL :: Dab,xab,r6,r12
+
+                Dab = wd(a,b)
+                xab = vdwl(a,b)
+                r6 = (xab/d)**6
+                r12 = r6*r6 
+
+
+                evdw = Dab*(r12-2*r6)
+        END FUNCTION
+        
+        ! INPUT :
+        !		- positions	: matrix of real, contains the atomic positions
+        !		- names		: list of charater, atomic UFF type
+        !		- types		: list of character, all UFF types in the molecule
+        !		- prop		: matrix of real, the UFF properties for the atom types
+        ! OPERATION :
+        !		Loop over all atom couples to compute the Van Der Waals energy 
+        ! RETURN :
+        !		Real, sum of all atoms couples to compute Van Der Waals energy
+        REAL FUNCTION vdw_energy(positions,names,types,prop,adj)
+                USE math
+        
+                CHARACTER(len=5), DIMENSION(:), INTENT(IN) :: names, types
+        	REAL, DIMENSION(:,:), INTENT(IN)           :: positions, prop
+                INTEGER, DIMENSION(:,:), INTENT(IN)        :: adj
+        	REAL, DIMENSION(11)                        :: a, b
+        	REAL                                       :: d
+                INTEGER                                    :: i, j, k, l
+
+                vdw_energy = 0
+                DO i=1,SIZE(names)-1
+                        DO j=i+1,SIZE(names)
+                                d = distance(positions(i,:),positions(j,:))
+                                IF (d.LT.5 .AND. adj(i,j)==0) THEN
+                                        DO l=1,SIZE(names)
+                                                IF(adj(i,l)==1 .AND. adj(j,l)==1) THEN
+                                                        EXIT
+                                                ELSE IF(l==SIZE(names)) THEN
+                                                        DO k=1, SIZE(types)
+                                                                IF(types(k)==names(i)) THEN
+                                                                        a=prop(k,:)
+                                                                        EXIT
+                                                                END IF
+                                                        END DO
+                                                        DO k=1, SIZE(types)
+                                                                IF(types(k)==names(j)) THEN
+                                                                        b=prop(k,:)
+                                                                        EXIT
+                                                                END IF
+                                                        END DO
+                                                        vdw_energy = vdw_energy + evdw(a,b,d)
+                                                END IF
+                                        END DO
+                                END IF
+                        END DO
+               END DO
         END FUNCTION
 END MODULE
