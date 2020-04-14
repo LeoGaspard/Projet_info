@@ -20,7 +20,7 @@ MODULE ecriture
                         WRITE (outfile,*)
                 END SUBROUTINE
                 SUBROUTINE write_connectivity(outfile,B)
-                        INTEGER, DIMENSION(:,:) :: B
+                        REAL, DIMENSION(:,:) :: B
                         INTEGER :: i,j,outfile
 
                         WRITE (outfile,*) "Printout of the calculated connectivity :"
@@ -29,7 +29,7 @@ MODULE ecriture
                         DO i=1,SIZE(B(1,:))
                                 DO j=i,SIZE(B(1,:))
                                         IF(B(i,j)/=0) THEN
-                                                WRITE (outfile,'(i20,i20,i20)') i,j,B(i,j)
+                                                WRITE (outfile,'(i20,i20,f20.1)') i,j,B(i,j)
                                         END IF
                                 END DO
                         END DO

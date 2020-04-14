@@ -592,7 +592,7 @@ MODULE structure
         ! INPUT     :
         !               - D, matrix of integer, the adjacency matrix
         !               - names, list of characters, the names of the atoms
-        !               - B, matrix of integer, bond order matrix
+        !               - B, matrix of real, bond order matrix
         ! OPERATION :
         !               Use the "standard" atomic valence to compute the
         !               bond order matrix, inspired by :
@@ -608,7 +608,7 @@ MODULE structure
                 CHARACTER(len=5), DIMENSION(:), INTENT(IN)    :: names
                 INTEGER, DIMENSION(:,:), INTENT(INOUT)        :: D
                 INTEGER, DIMENSION(:), ALLOCATABLE            :: UA,DU
-                INTEGER, DIMENSION(:,:), ALLOCATABLE          :: B
+                REAL, DIMENSION(:,:), ALLOCATABLE             :: B
                 INTEGER                                       :: i, j,nv
 
                 ALLOCATE(B(SIZE(D),SIZE(D)))
@@ -656,6 +656,33 @@ MODULE structure
                        IF(i>SIZE(DU)) THEN
                                EXIT
                        END IF
+                END DO
+        END SUBROUTINE
+
+        ! INPUT : 
+        !               -names : character(len=5), names of the atoms
+        !               -B     : matrix of real, bond order matrix
+        ! OPERATION :
+        !               Changes the bond order between resonant atoms
+        !               to 1.5
+        ! OUTPUT    :
+        !               -B : bond order matrix        
+
+        SUBROUTINE bond_order_arom(names,B)
+                CHARACTER(len=5), DIMENSION(:), INTENT(IN)        :: names
+                REAL, DIMENSION(:,:), ALLOCATABLE, INTENT(INOUT)  :: B
+                CHARACTER(len=1)                                  :: hi,hj
+                CHARACTER(len=2)                                  :: dummy
+                INTEGER                                           :: i,j
+
+                DO i=1,SIZE(names)
+                        DO j=1,SIZE(names)
+                                READ(names(i),'(2a,1a)') dummy,hi
+                                READ(names(j),'(2a,1a)') dummy,hj
+                                IF(hi=="R".AND.hj=="R".AND.B(i,j)/=0.0) THEN
+                                        B(i,j)=1.5
+                                END IF
+                        END DO
                 END DO
         END SUBROUTINE
 END MODULE

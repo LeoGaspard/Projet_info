@@ -33,7 +33,7 @@ MODULE lecture
         ALLOCATE(names(nAtom))
         READ(9,*)
         DO i=1,nAtom
-                READ(9,'(a2,F16.5,F16.5,F16.5)') names(i),positions(i,1),positions(i,2),positions(i,3)
+                READ(9,*) names(i),positions(i,1),positions(i,2),positions(i,3)
         END DO
         CLOSE(9)
         END SUBROUTINE

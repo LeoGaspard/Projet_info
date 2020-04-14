@@ -7,9 +7,9 @@ PROGRAM test
         USE energie
 
         INTEGER                                       :: nAtom,i,gaffdat,n,ncycle,csize,nelec,narom,uff,outfile
-        INTEGER, DIMENSION(:,:), ALLOCATABLE          :: D,B
+        INTEGER, DIMENSION(:,:), ALLOCATABLE          :: D
         CHARACTER(len=32)                             :: fName,outname
-        REAL, DIMENSION(:,:), ALLOCATABLE             :: positions
+        REAL, DIMENSION(:,:), ALLOCATABLE             :: positions,B
         CHARACTER(len=5), DIMENSION(:), ALLOCATABLE   :: names,types
         REAL, DIMENSION(:,:), ALLOCATABLE             :: prop
         CHARACTER(len=2), DIMENSION(10)               :: atomList
@@ -32,6 +32,7 @@ PROGRAM test
         CALL bond_order(D,names,B)
         CALL write_connectivity(outfile,B)
         CALL atom_type_assign(D,names,nAtom)
+        CALL bond_order_arom(names,B)
         CALL add_element(types,names(1))
         DO i=2,nAtom
                 IF(.NOT. ANY(names(i) == types)) THEN

@@ -8,14 +8,14 @@ MODULE energie
         
         ! INPUT     :
         !               - a, b : list of reals, UFF properties for atom a and b
-        !               - n    : integer, the bond order between atom a and b
+        !               - n    : real, the bond order between atom a and b
         ! OPERATION :
         !               Compute the req according to UFF
         ! RETURN    :
         !               Real, the equilibrium distance
         REAL FUNCTION req(a,b,n)
                 REAL, DIMENSION(11), INTENT(IN) :: a,b
-                INTEGER,INTENT(IN)              :: n
+                REAL,INTENT(IN)                 :: n
                 REAL                            :: ri,rj,rBO,rEN,xi,xj
 
                 ri = a(1)
@@ -30,21 +30,21 @@ MODULE energie
 
         ! INPUT     :
         !               - a, b : list of reals, UFF properties for atom a and b
-        !               - n    : integer, the bond order between atom a and b
+        !               - n    : real, the bond order between atom a and b
         ! OPERATION :
         !               Compute the stretching force constant according to UFF
         ! RETURN    :
         !               Real, the force constant
         REAL FUNCTION kbond(a,b,n)
                 REAL, DIMENSION(11),INTENT(IN) :: a,b
-                INTEGER,INTENT(IN)             :: n
+                REAL,INTENT(IN)                :: n
 
                 kbond = 664.12*(a(6)*b(6))/(req(a,b,n)**3)
         END FUNCTION
 
         ! INPUT     :
         !               - a, b : list of real, UFF properties for atom a and b
-        !               - n    : integer, the bond order between atom a and b
+        !               - n    : real, the bond order between atom a and b
         !               - d    : real, the distance between atom a and b
         ! OPERATION :
         !               Compute the UFF energy for a bond strech, with and
@@ -54,15 +54,14 @@ MODULE energie
         REAL FUNCTION ebond(a,b,n,d)
 
                 REAL, DIMENSION(11), INTENT(IN) :: a,b
-                REAL, INTENT(IN)                :: d
-                INTEGER, INTENT(IN)             :: n
+                REAL, INTENT(IN)                :: d,n
 
                 ebond = 0.5*kbond(a,b,n)*(d-req(a,b,n))**2
         END FUNCTION
 
         ! INPUT     :
         !               - positions : matrix of real, contain the atomic positions
-        !               - B         : matrix of integer, bond order matrix
+        !               - B         : matrix of reals, bond order matrix
         !               - names     : list of character, atomic UFF type
         !               - types     : list of character, all UFF types in the molecule
         !               - prop      : matrix of real, the UFF properties for the atom types
@@ -74,7 +73,7 @@ MODULE energie
                 USE math
 
                 CHARACTER(len=5), DIMENSION(:), INTENT(IN) :: names,types
-                INTEGER, DIMENSION(:,:), INTENT(IN)        :: B
+                REAL, DIMENSION(:,:), INTENT(IN)           :: B
                 REAL, DIMENSION(:,:), INTENT(IN)           :: positions, prop
                 REAL, DIMENSION(11)                        :: a,c 
                 REAL                                       :: d
@@ -104,14 +103,14 @@ MODULE energie
 
         ! INPUT     :
         !               - a, b, c : list of reals, UFF properties for atom a and b
-        !               - nab,nbc : integer, the bond order between atoms ab and bc
+        !               - nab,nbc : real, the bond order between atoms ab and bc
         ! OPERATION :
         !               Compute the bending force constant according to UFF
         ! RETURN    :
         !               Real, the force constant
         REAL FUNCTION kangle(a,b,c,nab,nbc)
                 REAL, DIMENSION(11),INTENT(IN) :: a,b,c
-                INTEGER,INTENT(IN)             :: nab,nbc
+                REAL,INTENT(IN)                :: nab,nbc
                 REAL                           :: beta,prefactor,endfactor,rterm,rab,rbc,rac,theta0
 
                 theta0 = b(2)*3.14159265359/180
@@ -130,16 +129,17 @@ MODULE energie
 
         ! INPUT     :
         !               - a, b, c  : list of real, UFF properties for atom a and b
-        !               - nab, nbc : integer, the bond order between atom ab and bc
+        !               - nab, nbc : real, the bond order between atom ab and bc
         !               - theta    : real, the angle abc
         ! OPERATION :
         !               Compute the UFF energy for a bend abc
         ! RETURN    :
         !               Real, the energy
         REAL FUNCTION eangle(a,b,c,nab,nbc,theta)
-                REAL, DIMENSION(11) :: a,b,c
-                INTEGER :: nab,nbc
-                REAL :: theta,theta0, c0, c1, c2
+                REAL, DIMENSION(11), INTENT(IN) :: a,b,c
+                REAL, INTENT(IN)                :: nab,nbc
+                REAL, INTENT(IN)                :: theta
+                REAL                            :: theta0, c0, c1, c2
 
                 theta0 = b(2)*3.14159265359/180
 
@@ -152,7 +152,7 @@ MODULE energie
 
         ! INPUT     :
         !               - positions : matrix of real, contain the atomic positions
-        !               - B         : matrix of integer, bond order matrix
+        !               - B         : matrix of real, bond order matrix
         !               - names     : list of character, atomic UFF type
         !               - types     : list of character, all UFF types in the molecule
         !               - prop      : matrix of real, the UFF properties for the atom types
@@ -165,7 +165,7 @@ MODULE energie
 
                 CHARACTER(len=5), DIMENSION(:), INTENT(IN) :: names,types
                 REAL, DIMENSION(:,:), INTENT(IN)           :: positions, prop
-                INTEGER, DIMENSION(:,:), INTENT(IN)        :: B
+                REAL, DIMENSION(:,:), INTENT(IN)           :: B
                 REAL, DIMENSION(11)                        :: a,d,c 
                 REAL                                       :: theta
                 INTEGER                                    :: i,j,k,l
@@ -319,7 +319,8 @@ MODULE energie
 !			- phi0, real, the equilibrium angle
 SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk)
         CHARACTER(len=5), INTENT(IN)                    :: j,k,i,l
-        INTEGER, INTENT(IN)                             :: bjk,nj,nk
+        INTEGER, INTENT(IN)                             :: nj,nk
+        REAL, INTENT(IN)                                :: bjk
         INTEGER, INTENT(INOUT)                          :: n
         REAL, INTENT(IN)                                :: vj,vk,uj,uk
         REAL                                            :: nvj,nvk
@@ -411,8 +412,8 @@ END SUBROUTINE
 
 REAL FUNCTION t_energy(phi,j,k,bjk,nj,nk,i,l,vj,vk,uj,uk)
         REAL, INTENT(IN)             :: vj,vk,uj,uk
-        INTEGER,INTENT(IN)           :: bjk,nj,nk
-        REAL, INTENT(IN)             :: phi
+        INTEGER,INTENT(IN)           :: nj,nk
+        REAL, INTENT(IN)             :: phi,bjk
 	REAL                         :: v, phi0
         INTEGER                      :: n
         CHARACTER(len=5), INTENT(IN) :: j,k,i,l
@@ -424,7 +425,7 @@ END FUNCTION
 
 ! INPUT		:
 !                       - names		: list of character, the names of the atoms with the format 'xxV  ' xx represent the atom and V the numver of neighbours
-!                       - B		: matrix of integer, bond order matrix
+!                       - B		: matrix of real, bond order matrix
 !			- positions 	: matrix of real, contain the atomic positions
 !                       - D		: matrix of integer, the adjency matrix
 !                       - prop          : the list of the atomic properties
@@ -437,8 +438,8 @@ END FUNCTION
 REAL FUNCTION torsion_energy(names,B,positions, D,prop,types)
         USE math
 
-	REAL, DIMENSION(:,:), INTENT(IN)                :: positions,prop
-        INTEGER, DIMENSION(:,:), INTENT(IN)             :: B,D
+	REAL, DIMENSION(:,:), INTENT(IN)                :: positions,prop,B
+        INTEGER, DIMENSION(:,:), INTENT(IN)             :: D
         CHARACTER(len=5), DIMENSION(:), INTENT(IN)      :: names,types
 	REAL                                            :: v, phi0, phi
         INTEGER                                         :: n,i,j,k,l,p
