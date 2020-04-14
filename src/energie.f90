@@ -452,7 +452,7 @@ REAL FUNCTION torsion_energy(names,B,positions, D,prop,types)
                                 DO k=1,SIZE(names)
                                         IF(B(k,j)/=0 .AND. k/=i) THEN
                                                 DO l=1, SIZE(names)
-                                                        IF (B(k,l)/=0 .AND. l/=j) THEN
+                                                        IF (B(k,l)/=0 .AND. l/=j .AND. l/=i) THEN
                                                                 DO p=1, SIZE(types)
                                                                         IF(types(p)==names(j)) THEN
                                                                                 propj=prop(p,:)
