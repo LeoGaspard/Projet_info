@@ -61,6 +61,7 @@ MODULE math
                 REAL, DIMENSION (3),INTENT(IN)  :: a,b,c,d
                 REAL, DIMENSION (3)             :: vect_ab,vect_bc,vect_cd
                 REAL, DIMENSION (3)             :: vect_n1,vect_n2
+                REAL                            :: doprod
 
                 vect_ab=(/ b(1)-a(1),b(2)-a(2),b(3)-a(3) /)
                 vect_bc=(/ c(1)-b(1),c(2)-b(2),c(3)-b(3) /)
@@ -68,10 +69,11 @@ MODULE math
 
                 vect_n1=cross_product(vect_ab,vect_bc)
                 vect_n2=cross_product(vect_bc,vect_cd)
+                doprod = REAL(NINT(DOT_PRODUCT(vect_n1,vect_n2)/(NORM2(vect_n1)*NORM2(vect_n2))*10000))/10000
                 IF (DOT_PRODUCT(vect_bc,cross_product(vect_n1,vect_n2)) .LT. 0) THEN
-                        dihedral=ACOS(DOT_PRODUCT(vect_n1,vect_n2)/(NORM2(vect_n1)*NORM2(vect_n2)))
+                        dihedral=ACOS(doprod)
                 ELSE
-                        dihedral=-ACOS(DOT_PRODUCT(vect_n1,vect_n2)/(NORM2(vect_n1)*NORM2(vect_n2)))
+                        dihedral=-ACOS(doprod)
                 END IF
        END FUNCTION
 END MODULE

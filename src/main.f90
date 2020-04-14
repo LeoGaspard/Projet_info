@@ -14,7 +14,7 @@ PROGRAM test
         REAL, DIMENSION(:,:), ALLOCATABLE             :: prop
         CHARACTER(len=2), DIMENSION(10)               :: atomList
         REAL, DIMENSION(10,2)                         :: minMax
-        REAL                                          :: benergy,aenergy,vdwenergy
+        REAL                                          :: benergy,aenergy,vdwenergy,tenergy
         INTEGER, DIMENSION(:), ALLOCATABLE            :: discovered
 
 
@@ -49,6 +49,8 @@ PROGRAM test
         PRINT *,aenergy
         vdwenergy = vdw_energy(positions,names,types,prop,D)
         PRINT *,vdwenergy
+        tenergy = torsion_energy(names,B,positions,D)
+        PRINT *,tenergy
 
 
         
