@@ -49,7 +49,7 @@ PROGRAM test
         PRINT *,aenergy
         vdwenergy = vdw_energy(positions,names,types,prop,D)
         PRINT *,vdwenergy
-        tenergy = torsion_energy(names,B,positions,D)
+        tenergy = torsion_energy(names,B,positions,D,prop,types)
         PRINT *,tenergy
 
 

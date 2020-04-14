@@ -299,21 +299,30 @@ MODULE energie
         END FUNCTION
 
 ! INPUT		:
-!			- D, matrix of integer, the adjency matrix
-!			- names, list of character, the names of the atoms with the format 'xxV  ' xx represent the atom and V the numver of neighbours
-!			- B, integer, the order of the bond
+!			- j     : the name (len=5) of the atom j
+!			- k     : the name (len=5) of the atom k
+!			- bjk   : the j-k bond order
+!                       - n     : the periodicity
+!                       - phi0  : the equilibrium dihedral angle
+!                       - v     : the barrier
+!                       - nj    : the number of neighbors to j
+!                       - nk    : the number of neighbors to k
+!                       - i     : the name (len=5) of the atom i
+!                       - l     : the name (len=5) of the atom l
+!                       - vj,vk : the V parameter for the atom
+!                       - uj,uk : the U parameter for the atom
 ! OPERATION	:
 !			Compute the barrier to rotation
 ! RETURN	:
 !			- v, real, the value of barrier to rotation in kcal/mol
 !			- n, integer, the periodicity
 !			- phi0, real, the equilibrium angle
-SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l)
-        USE ArrayManip
-
+SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk)
         CHARACTER(len=5), INTENT(IN)                    :: j,k,i,l
         INTEGER, INTENT(IN)                             :: bjk,nj,nk
         INTEGER, INTENT(INOUT)                          :: n
+        REAL, INTENT(IN)                                :: vj,vk,uj,uk
+        REAL                                            :: nvj,nvk
         REAL, INTENT(INOUT)                             :: phi0,v
         REAL                                            :: pi
         CHARACTER(len=2)                                :: tj,tk
@@ -325,133 +334,115 @@ SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l)
         READ(j,'(2a,1a)') tj,hj
         READ(k,'(2a,1a)') tk,hk
 
-        v = 0
-        n = 0
-        phi0 = 0
+        nvj = vj
+        nvk = vk
 
-        IF (bjk/=0) THEN
-                ! Case (i) : bonds involving an sp3 atom of the oxygen column with an sp2 or resonant atom of  another column, X_3 column 16 and X_2,X_R 
-                IF (nj==2 .AND. (tj=='O_' .OR. tj=='S_'.OR. tj=='Te' .OR. tj=='Po' .OR. tj=='Se') .AND. hj=='3') THEN
-                        IF(tk/='O_' .AND. tk/='S_'.AND. tk/='Te' .AND. tk/='Po' .AND. tk/='Se' .AND. (hk=='2' .OR. hk=='R')) THEN
-                                v = 2
-                                n = 2
-                                phi0 = pi 
-                        END IF
-                END IF
-                IF (nk==2 .AND. (tk=='O_' .OR. tk=='S_'.OR. tk=='Te' .OR. tk=='Po' .OR. tk=='Se') .AND. hk=='3') THEN
-                        IF(tj/='O_' .AND. tj/='S_'.AND. tj/='Te' .AND. tj/='Po' .AND. tj/='Se' .AND. (hj=='2' .OR. hj=='R')) THEN
-                                v = 2
-                                n = 2
-                                phi0 = pi 
-                        END IF
-                END IF
-                ! Case (d) : bonds involving two resonant atoms, X_R
-                IF (hk=='R' .AND. hj=='R') THEN
-                        v = 25
+        !Check for sp3-sp3 generic case
+        IF(hj=='3' .AND. hk=='3') THEN
+                n = 3
+                phi0 = pi
+                IF((tj=='O_' .OR. tj=='Te' .OR. tj=='Se' .OR. tj=='Po' .OR. tj=='S_') .AND.&
+                 & (tk=='O_' .OR. tk=='S_' .OR. tk=='Se' .OR. tk=='Te'.OR. tk=='Po')) THEN
+                        nvj = 6.8
                         n = 2
-                        phi0 = pi
-                END IF
-                ! Case of a single bond between j and k
-                IF (bjk==1) THEN
-                        ! Case (a) : single bond involving two sp3 atoms, X_3
-                        IF (hj=='3' .AND. hk=='3') THEN
-                                v = 2
-                                n = 3
-                                phi0 = pi
+                        phi0 = pi/2
+                        IF(tj=='O_') THEN
+                                nvj = 2
                         END IF
-                        ! Case (h) :  bonds involving two sp3  atoms of the oxygen column, X_3 column 16 
-                        IF ((tj=='O_' .OR. tj=='S_'.OR. tj=='Te' .OR. tj=='Po' .OR. tj=='Se') .AND. &
-                                &(tk=='O_' .OR. tk=='S_'.OR. tk=='Te' .OR. tk=='Po' .OR. tk=='Se') &
-                                &.AND. hk=='3' .AND. hj=='3') THEN
-                                v = 2
+                        IF(tk=='O_') THEN
+                                nvk = 2
+                        END IF
+                END IF
+                v = SQRT(vj*vk)
+        !Check for sp2-sp2 generic case
+        ELSE IF(hj=='2' .AND. hk=='2') THEN
+                v = 5*SQRT(uj*uk)*(1+4.18*LOG(REAL(bjk)))
+        !Check for the sp2-sp3 case
+        ELSE IF(((hj=='2'.OR.hj=='R') .AND. hk=='3') .OR. (hj=='3' .AND. (hk=='2'.OR.hj=='R'))) THEN
+                n = 6
+                v = 1
+                phi0 = 0
+                IF((tj=='O_' .OR. tj=='Te' .OR. tj=='Se' .OR. tj=='Po' .OR. tj=='S_').AND.hj=='3') THEN
+                        IF(tk/='O_' .OR. tk/='Te' .OR. tk/='Se' .OR. tk/='Po' .OR. tk/='S_') THEN
                                 n = 2
                                 phi0 = pi/2
+                                V = 5*SQRT(uj*uk)*(1+4.18*LOG(REAL(bjk)))
                         END IF
-                        ! Case (b) : single bond involving one sp2 center and one sp3 center, X_2,X_R and X_3	
-                        IF (hj=='3' .AND. (hk=='2' .OR. hk=='R')) THEN
-                                v = 1
-                                n = 6
-                                phi0 = 0
-                        END IF
-                        IF (hk=='3' .AND. (hj=='2' .OR. hj=='R')) THEN
-                                v = 1
-                                n = 6
-                                phi0 = 0
-                        END IF
-                        ! Case (e) : single bond involving two sp2 or resonant atoms
-                        IF ((hj=='2' .AND. hk=='2').OR.(hj=='R' .AND. hk=='2').OR.(hj=='2'.AND.hk=='R')) THEN
-                                v = 5
+                END IF
+                IF((tk=='O_' .OR. tk=='Te' .OR. tk=='Se' .OR. tk=='Po' .OR. tk=='S_').AND.hk=='3') THEN
+                        IF(tj/='O_' .OR. tj/='Te' .OR. tj/='Se' .OR. tj/='Po' .OR. tj/='S_') THEN
                                 n = 2
-                                phi0 = pi
+                                phi0 = pi/2
+                                V = 5*SQRT(uj*uk)*(1+4.18*LOG(REAL(bjk)))
                         END IF
-                        ! Case (f) : single bond involving two aromatic atoms
-                        IF (hk=='R' .AND. hj=='R') THEN
-                                v = 10
-                                n = 2
-                                phi0 = pi
-                        END IF
-                        ! Case (j) : single bond involving j sp2 or resonant and k sp3, i /= sp2 or resonant
-                        IF ((hj=='R' .OR. hj=='2') .AND. hk=='3' .AND. hi/='2' .AND. hi/='R') THEN
+                END IF
+                IF(hj=='2') THEN
+                        IF(hi=="2") THEN
                                 v = 2
                                 n = 3
-                                phi0 = pi
-                        END IF
-                        IF ((hk=='R' .OR. hk=='2') .AND. hj=='3' .AND. hl/='2' .AND. hl/='R') THEN
-                                v = 2
-                                n = 3
-                                phi0 = pi
-                        END IF
-                ELSE IF (bjk==2) THEN 
-                        ! Case (c) : bouble bond involving two sp2 atoms
-                        IF (hj=='2' .AND. hk=='2') THEN
-                                v = 45
-                                n = 2
                                 phi0 = pi
                         END IF
                 END IF
+                IF(hk=='2') THEN
+                        IF(hl=="2") THEN
+                                v = 2
+                                n = 3
+                                phi0 = pi
+                        END IF
+                END IF
+        ELSE
+                v = 0
+                n = 0
+                phi0 = 0
         END IF
-
 END SUBROUTINE
 
 ! INPUT		:
-!			- v	: real, the value of the barrier to rotation
-!			- n	: integer, the periodicity
-!			- phi	: real, the dihedral angle
-!			- phi0	: real, the equilibrium angle
+!			- phi   : the dihedral angle
+!			- j,k   : the name(len=5) of the atom
+!			- bjk   : the j-k bond order
+!			- nj,nk : the number of neighbors to j,k
+!                       - vj,vk : the V parameter for the atom
+!                       - uj,uk : the U parameter for the atom
 ! OPERATION 	: 
 !			Compute the torsion energy
 ! RETURN	:
 !			Real, the torsion energy
 
-REAL FUNCTION t_energy(phi,j,k,bjk,nj,nk,i,l)
-	REAL                        :: v, phi, phi0
-        INTEGER                     :: n
-        INTEGER,INTENT(IN)          :: bjk,nj,nk
-        CHARACTER(len=5)            :: j,k,i,l
-        CALL find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l) 
+REAL FUNCTION t_energy(phi,j,k,bjk,nj,nk,i,l,vj,vk,uj,uk)
+        REAL, INTENT(IN)             :: vj,vk,uj,uk
+        INTEGER,INTENT(IN)           :: bjk,nj,nk
+        REAL, INTENT(IN)             :: phi
+	REAL                         :: v, phi0
+        INTEGER                      :: n
+        CHARACTER(len=5), INTENT(IN) :: j,k,i,l
+        CALL find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk) 
 
 
         t_energy = v*(1-COS(n*(phi-phi0)))/2
 END FUNCTION
 
 ! INPUT		:
-!                       - D		: matrix of integer, the adjency matrix
 !                       - names		: list of character, the names of the atoms with the format 'xxV  ' xx represent the atom and V the numver of neighbours
 !                       - B		: matrix of integer, bond order matrix
 !			- positions 	: matrix of real, contain the atomic positions
+!                       - D		: matrix of integer, the adjency matrix
+!                       - prop          : the list of the atomic properties
+!                       - types         : the list of the atom types
 ! OPERATION	:
 !			Loop over all atom quadrouple to compute the torsion energy
 ! RETURN	:
 !			Real,sum of all the torsion energy
 
-REAL FUNCTION torsion_energy(names,B,positions, D)
+REAL FUNCTION torsion_energy(names,B,positions, D,prop,types)
         USE math
 
-	REAL, DIMENSION(:,:), INTENT(IN)                :: positions
+	REAL, DIMENSION(:,:), INTENT(IN)                :: positions,prop
         INTEGER, DIMENSION(:,:), INTENT(IN)             :: B,D
-        CHARACTER(len=5), DIMENSION(:), INTENT(IN)      :: names
+        CHARACTER(len=5), DIMENSION(:), INTENT(IN)      :: names,types
 	REAL                                            :: v, phi0, phi
-        INTEGER                                         :: n,i,j,k,l
+        INTEGER                                         :: n,i,j,k,l,p
+        REAL, DIMENSION(11)                             :: propj,propk
 
         torsion_energy = 0
 
@@ -462,11 +453,24 @@ REAL FUNCTION torsion_energy(names,B,positions, D)
                                         IF(B(k,j)/=0 .AND. k/=i) THEN
                                                 DO l=1, SIZE(names)
                                                         IF (B(k,l)/=0 .AND. l/=j) THEN
+                                                                DO p=1, SIZE(types)
+                                                                        IF(types(p)==names(j)) THEN
+                                                                                propj=prop(p,:)
+                                                                                EXIT
+                                                                        END IF
+                                                                END DO
+                                                                DO p=1, SIZE(types)
+                                                                        IF(types(p)==names(k)) THEN
+                                                                                propk=prop(p,:)
+                                                                                EXIT
+                                                                        END IF
+                                                                END DO
                                                                 phi = dihedral(positions(i,:),positions(j,:)&
                                                                         &,positions(k,:),positions(l,:))
                                                                 torsion_energy = torsion_energy + &
                                                                 &t_energy(phi,names(j),names(k),B(j,k)&
-                                                                &,SUM(D(:,j)),SUM(D(:,k)),names(i),names(l))
+                                                                &,SUM(D(:,j)),SUM(D(:,k)),names(i),names(l),&
+                                                                &propj(7),propj(7),propk(8),propk(8))
                                                         END IF
                                                 END DO
                                         END IF
@@ -478,3 +482,4 @@ REAL FUNCTION torsion_energy(names,B,positions, D)
 END FUNCTION
 
 END MODULE
+
