@@ -32,7 +32,6 @@ MODULE math
 
                 x=((-ac**2+ab**2+bc**2)/(2*ab*bc))
                 x = REAL(NINT(x*10000))/10000
-                print *,ACOS(x)
                 angle= ACOS(x)
        END FUNCTION
         
