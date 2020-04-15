@@ -31,6 +31,7 @@ MODULE math
                 bc= distance(posB,posC)
 
                 x=((-ac**2+ab**2+bc**2)/(2*ab*bc))
+                x = REAL(NINT(x*10000))/10000
                 angle= ACOS(x)
        END FUNCTION
         
