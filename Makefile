@@ -1,4 +1,4 @@
-CC = gfortran
+CC = gfortran-8
 EXEC = FF_U_NOOB
 LIBS = 
 FLAGS = 
