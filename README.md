@@ -1,8 +1,11 @@
 # Projet_info
 
 Projet fortran M1 CTM/TCCM :
+
 	Pierre Racine : pierre.racine@univ-tlse3.fr
+
 	Yann Damour   : yann.damour@univ-tlse3.fr
+
 	Léo Gaspard   : leo.gaspard@univ-tlse3.fr
 
 
