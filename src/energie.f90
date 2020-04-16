@@ -21,9 +21,9 @@ MODULE energie
                 ri = a(1)
                 rj = b(1)
                 xi=a(9)
-                xj=a(9)
+                xj=b(9)
                 rBO = -0.1332*(ri+rj)*LOG(REAL(n))
-                rEN = ri*rj*((SQRT(xi-xj)**2)/(xi*ri+xj*rj))
+                rEN = ri*rj*((SQRT(xi)-SQRT(xj))**2)/(xi*ri+xj*rj)
 
                 req = ri + rj + rBO - rEN
         END FUNCTION
@@ -419,8 +419,8 @@ REAL FUNCTION t_energy(phi,j,k,bjk,nj,nk,i,l,vj,vk,uj,uk)
         CHARACTER(len=5), INTENT(IN) :: j,k,i,l
         CALL find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk) 
 
-
-        t_energy = v*(1-COS(n*(phi-phi0)))/2
+        t_energy = v*(1-COS(n*phi)*COS(n*phi0))/2
+        t_energy = t_energy/((nj-1)*(nk-1))
 END FUNCTION
 
 ! INPUT		:

@@ -609,7 +609,7 @@ MODULE structure
                 INTEGER, DIMENSION(:,:), INTENT(INOUT)        :: D
                 INTEGER, DIMENSION(:), ALLOCATABLE            :: UA,DU
                 REAL, DIMENSION(:,:), ALLOCATABLE             :: B
-                INTEGER                                       :: i, j,nv
+                INTEGER                                       :: i, j,nv,start
 
                 ALLOCATE(B(SIZE(D),SIZE(D)))
                 ALLOCATE(DU(SIZE(D)))
@@ -638,24 +638,53 @@ MODULE structure
                                         DU(i) = 0
                         END SELECT
                 END DO
+                ! Choses as starting atom one with fewer neighbors than the others
+                start = 1
+                DO i=1,SIZE(names)
+                        IF(SUM(D(:,i))<SUM(D(:,start)) .AND. DU(i)/=0) THEN  
+                               start = i                              
+                        END IF                  
+                END DO
+                IF(SUM(DU)/=0) THEN
+                        CALL bond_order_dfs(start,DU,B)
+                END IF
                 
-                i=1
-                DO WHILE(SUM(DU)/=0)
-                       IF(DU(i)==0) THEN
-                               i = i+1
-                       ELSE 
-                               DO j=1,SIZE(DU)
-                                       IF(DU(i)>0 .AND. DU(j)>0 .AND. D(i,j) > 0) THEN
-                                               B(i,j) = B(i,j) + 1
-                                               B(j,i) = B(j,i) + 1
-                                               DU(i) = DU(i)-1
-                                               DU(j) = DU(j)-1
-                                       END IF
-                               END DO
-                       END IF
-                       IF(i>SIZE(DU)) THEN
-                               EXIT
-                       END IF
+        END SUBROUTINE
+
+        ! INPUT : 
+        !       - i  : integer, position of the starting point
+        !       - DU : list of integers, the degree of unsaturation
+        !       - B  : matrix of real, the bond order matrix
+        ! OPERATION :
+        !       Uses DFS exploration to assign bond order
+        !       between atoms
+        ! OUTPUT    :
+        !       B : bond order matrix 
+        RECURSIVE SUBROUTINE bond_order_dfs(i,DU,B)
+                INTEGER, INTENT(IN)                   :: i
+                INTEGER, DIMENSION(:), INTENT(INOUT)  :: DU
+                REAL, DIMENSION(:,:), INTENT(INOUT)   :: B
+                INTEGER                               :: j,k
+                k = i
+                DO WHILE(DU(k)==0)
+                        k =  MODULO(k+1,SIZE(DU))
+                END DO
+                DO j=1,SIZE(DU)
+                        IF(DU(j) > 0 .AND. B(k,j) /= 0) THEN
+                                B(k,j) = B(k,j) + 1
+                                B(j,k) = B(j,k) + 1
+                                DU(k)  = DU(k)  - 1
+                                DU(j)  = DU(j)  - 1
+                                IF(SUM(DU)/= 0) THEN
+                                        CALL bond_order_dfs(j,DU,B)
+                                        IF(SUM(DU)/=0) THEN
+                                                B(k,j) = B(k,j) - 1
+                                                B(j,k) = B(j,k) - 1
+                                                DU(k)  = DU(k)  + 1
+                                                DU(j)  = DU(j)  + 1
+                                        END IF
+                                END IF
+                        END IF
                 END DO
         END SUBROUTINE
 
