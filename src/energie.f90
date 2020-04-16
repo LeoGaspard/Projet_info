@@ -608,5 +608,22 @@ END FUNCTION
         END FUNCTION
 
 
+SUBROUTINE compute_energy(positions,B,names,types,prop,D,outfile)
+        USE ecriture
+        CHARACTER(len=5), DIMENSION(:), INTENT(IN)    :: names,types
+        REAL, DIMENSION(:,:), INTENT(IN)              :: B,positions,prop
+        INTEGER, DIMENSION(:,:), INTENT(IN)           :: D
+        INTEGER, INTENT(IN)                           :: outfile
+        REAL                                          :: benergy,aenergy,tenergy,ienergy,vdwenergy
+
+
+        benergy = bond_energy(positions,B,names,types,prop)
+        aenergy = angle_energy(positions,B,names,types,prop)
+        tenergy = torsion_energy(names,B,positions,D,prop,types)
+        ienergy = improper_energy(positions,B,names)
+        vdwenergy = vdw_energy(positions,names,types,prop,D)
+
+        CALL write_energies(outfile,benergy,aenergy,tenergy,ienergy,vdwenergy)
+END SUBROUTINE
 END MODULE
 

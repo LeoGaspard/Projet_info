@@ -1,5 +1,5 @@
 CC = gfortran-8
-EXEC = FF_U_NOOB
+EXEC = Projet
 LIBS = 
 FLAGS = 
 
@@ -25,7 +25,7 @@ arraymanip.o :
 ecriture.o :
 	$(CC) src/ecriture.f90 -c $(FLAGS)
 
-energie.o : math.o
+energie.o : math.o ecriture.o
 	$(CC) src/energie.f90 -c $(FLAGS)
 
 
