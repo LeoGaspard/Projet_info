@@ -5,18 +5,22 @@ Projet fortran M1 CTM/TCCM :
 	Yann Damour   : yann.damour@univ-tlse3.fr
 	Léo Gaspard   : leo.gaspard@univ-tlse3.fr
 
-# Énergie pour une géométrie donnée
-	## Lire un fichier xyz (FAIT) 
-	## Attribution des types d'atomes
-	## Détermination des angles + dièdres
-	## Trouver les paramètres correspondants
-	## Calcul des énergies
 
-# Joli output
+sudo apt-get install gfortran-8
 
-# Optimisation de géométrie (MC/génétique)
+Créer un fichier au format .xyz qui contient les coordonnées
 
-# IR
+	nAtom
+
+    C      0.0   0.0   0.0
+    H      1.0   0.0   0.0
+    ...
 
 
+Compiler le projet "make"
+
+./Projet coordinates.xyz
+
+
+Les résultats sont dans le fichier 'OUTPUT'
 

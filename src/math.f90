@@ -77,4 +77,25 @@ MODULE math
                         dihedral=-ACOS(doprod)
                 END IF
        END FUNCTION
+       ! INPUT     :
+       !                -a,b,c,d : Real vectors, positions of 
+       !                 objects a,c,b,d
+       ! OPERATION :
+       !                Compute the improper angle between line a-b and plane c-a-d
+       ! RETURN    :
+       !                Real, the improper angle
+       REAL FUNCTION improper(a,b,c,d)
+                REAL, DIMENSION (3),INTENT(IN)  :: a,b,c,d
+                REAL, DIMENSION (3)             :: vect_ab,vect_ac,vect_ad
+                REAL                            :: t,improperangle,doprod
+
+                vect_ab=(/ b(1)-a(1),b(2)-a(2),b(3)-a(3) /)
+                vect_ac=(/ c(1)-a(1),c(2)-a(2),c(3)-a(3) /)
+                vect_ad=(/ d(1)-a(1),d(2)-a(2),d(3)-a(3) /)
+                t=angle(c,a,d)
+                doprod = DOT_PRODUCT(cross_product(vect_ac,vect_ad),vect_ab)/(NORM2(cross_product(vect_ac,vect_ad)*NORM2(vect_ab)))
+                improperangle=ASIN(doprod/SIN(t))
+                
+        END FUNCTION
+
 END MODULE

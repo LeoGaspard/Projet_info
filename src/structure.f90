@@ -82,7 +82,7 @@ MODULE structure
 
 
         ! INPUT     :
-        !               - D          : matrix of integer, the adjacency matrix
+        !               - D          : matrix of reals, the bond order matrix
         !               - nAtom      : integer, the number of atoms
         !               - discovered : a list containing the index of the already 
         !                              seen atoms
@@ -113,89 +113,59 @@ MODULE structure
         !               - narom      : the number of aromatic cycles in which the
         !                              "parent" takes part
         RECURSIVE SUBROUTINE find_cycle(D,nAtom,discovered,start,parent,step,ncycle,csize,nelec,narom,names)
+                !! Uses DFS for graph exploration and cycle determination
+                !! and counts the electrons to guess if one cycle is
+                !! aromatic or not
                 USE ArrayManip
 
-                INTEGER, DIMENSION(:,:),INTENT(IN)                :: D
+                REAL, DIMENSION(:,:),INTENT(IN)                   :: D
                 INTEGER, INTENT(IN)                               :: nAtom,start,parent,step,csize
-                CHARACTER(len=5), DIMENSION(:), INTENT(IN)        :: names
                 INTEGER, INTENT(INOUT)                            :: ncycle,nelec,narom
-                INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(INOUT) :: discovered
                 INTEGER                                           :: i,j
+                INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(INOUT) :: discovered
+                CHARACTER(len=5), DIMENSION(:)                    :: names
 
-                ! Add the starting atom to the discovered list
+
                 CALL add_element(discovered,start)
-
-                ! Add the number of electrons corresponding to the 
-                ! atomic type
                 SELECT CASE(names(start))
-                        CASE('C 3')
-                                nelec = nelec+1
-                        CASE('C_2')
-                                nelec = nelec+1
-                        CASE('C_1')
-                                nelec = nelec+1
-                        CASE('C_R')
-                                nelec = nelec+1
-                        CASE('C 2')
-                                nelec = nelec+1
                         CASE('N 3')
-                                nelec = nelec+2
-                        CASE('N_R')
                                 nelec = nelec+2
                         CASE('O 2')
                                 nelec = nelec+2
-                        CASE('O_2')
-                                nelec = nelec+2
                         CASE('S 2')
-                                nelec = nelec+2
-                        CASE('S_R')
                                 nelec = nelec+2
                         CASE DEFAULT
                                 nelec = nelec
                 END SELECT
 
                 DO j=1,nAtom
-                        ! If the "start" is connected to the "parent" we have found
-                        ! a cycle
-                        IF(D(start,j)==1 .AND. j==parent .AND. step==csize) THEN
+                        IF(D(start,j)/=0 .AND. j==parent .AND. step==csize) THEN
+                                IF(D(start,j)==2) THEN
+                                        nelec = nelec+2
+                                END IF
                                 ncycle = ncycle+1
                                 IF(MOD(nelec-2,4)==0 .AND. nelec > 4) THEN
                                         narom = narom + 1
                                 END IF
-                        ! If the "start" isn't connected to any atom, 
-                        ! we remove the added electron and the "start"
-                        ! from "discovered"
                         ELSE IF(j == nAtom) THEN
+                                IF(D(start,j)==2) THEN
+                                        nelec = nelec-2
+                                END IF
                                 SELECT CASE(names(start))
-                                        CASE('C 3')
-                                                nelec = nelec-1
-                                        CASE('C_R')
-                                                nelec = nelec-1
-                                        CASE('C_2')
-                                                nelec = nelec-1
-                                        CASE('C_1')
-                                                nelec = nelec-1
-                                        CASE('C 2')
-                                                nelec = nelec-1
                                         CASE('N 3')
-                                                nelec = nelec-2
-                                        CASE('N_R')
-                                                nelec = nelec-2
+                                                 nelec = nelec-2
                                         CASE('O 2')
                                                 nelec = nelec-2
-                                        CASE('O_2')
-                                                nelec = nelec-2
                                         CASE('S 2')
-                                                nelec = nelec-2
-                                        CASE('S_R')
                                                 nelec = nelec-2
                                         CASE DEFAULT
                                                 nelec = nelec
                                 END SELECT
                                 discovered = discovered(:SIZE(discovered)-1)
-                        ! If the "start" is connected to an atom which is not
-                        ! the "parent", we start DFS again from this atom
-                        ELSE IF(D(start,j)==1 .AND. step+1 <= csize .AND. .NOT. ANY(j==discovered)) THEN
+                        ELSE IF(D(start,j)/=0 .AND. step+1 <= csize .AND. .NOT. ANY(j==discovered)) THEN
+                                IF(D(start,j)==2) THEN
+                                        nelec = nelec+2
+                                END IF
                                 CALL find_cycle(D,nAtom,discovered,j,parent,step+1,ncycle,csize,nelec,narom,names)
                         END IF
                 END DO
@@ -211,17 +181,20 @@ MODULE structure
         !               For each atom, change the name to assigne an UFF atom type
         ! OUTPUT    :
         !               - names, the list of atom UFF types
-        SUBROUTINE atom_type_assign(D,names,nAtom)
+        SUBROUTINE atom_type_assign(D,B,names,nAtom)
                 INTEGER, DIMENSION(:,:),INTENT(IN)           :: D
+                REAL, DIMENSION(:,:), INTENT(IN)             :: B
                 INTEGER, INTENT(IN)                          :: nAtom
                 CHARACTER(len=5), DIMENSION(:),INTENT(INOUT) :: names
                 INTEGER                                      :: i,j,nv,ncycle,narom,nelec,dox
                 CHARACTER(len=2)                             :: na
                 INTEGER, DIMENSION(:), ALLOCATABLE           :: discovered
                 LOGICAL                                      :: arom
+                CHARACTER(len=5), DIMENSION(:), ALLOCATABLE  :: newnames
                 
                 !Put the number of neighbours in the name
                 CALL atom_neighbour(D,names,nAtom)
+                newnames = names
 
 
                 ! Loop over all the atoms and assigne the UFF type
@@ -253,11 +226,11 @@ MODULE structure
                                         IF(nv==4) THEN
                                                 names(i) = 'C_3  '
                                         ELSE
-                                                DO j=3,7
+                                                DO j=3,20
                                                 narom=0
                                                 ncycle=0
                                                 nelec=0
-                                                CALL find_cycle(D,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,names)
+                                                CALL find_cycle(B,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,newnames)
                                                 DEALLOCATE(discovered)
                                                 IF(narom>0) THEN
                                                         arom = .TRUE.
@@ -273,11 +246,11 @@ MODULE structure
                                         END IF
                                 CASE('N')
                                         arom = .FALSE.
-                                        DO j=3,7
+                                        DO j=3,20
                                         narom = 0
                                         ncycle = 0
                                         nelec = 0
-                                        CALL find_cycle(D,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,names)
+                                        CALL find_cycle(B,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,newnames)
                                         DEALLOCATE(discovered)
                                         IF(narom>0) THEN
                                                 arom = .TRUE.
@@ -294,11 +267,11 @@ MODULE structure
                                         END IF
                                 CASE('O')
                                         arom = .FALSE.
-                                        DO j=3,7
+                                        DO j=3,20
                                         narom = 0
                                         ncycle = 0
                                         nelec = 0
-                                        CALL find_cycle(D,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,names)
+                                        CALL find_cycle(B,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,newnames)
                                         DEALLOCATE(discovered)
                                         IF(narom>0) THEN
                                                 arom = .TRUE.
@@ -343,11 +316,11 @@ MODULE structure
                                 CASE('S')
                                         dox = 0
                                         arom = .FALSE.
-                                        DO j=3,7
+                                        DO j=3,20
                                         narom = 0
                                         ncycle = 0
                                         nelec = 0
-                                        CALL find_cycle(D,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,names)
+                                        CALL find_cycle(B,nAtom,discovered,i,i,1,ncycle,j,nelec,narom,newnames)
                                         DEALLOCATE(discovered)
                                         IF(narom>0) THEN
                                                 arom = .TRUE.
@@ -701,14 +674,14 @@ MODULE structure
                 CHARACTER(len=5), DIMENSION(:), INTENT(IN)        :: names
                 REAL, DIMENSION(:,:), ALLOCATABLE, INTENT(INOUT)  :: B
                 CHARACTER(len=1)                                  :: hi,hj
-                CHARACTER(len=2)                                  :: dummy
+                CHARACTER(len=2)                                  :: ti,tj
                 INTEGER                                           :: i,j
 
                 DO i=1,SIZE(names)
                         DO j=1,SIZE(names)
-                                READ(names(i),'(2a,1a)') dummy,hi
-                                READ(names(j),'(2a,1a)') dummy,hj
-                                IF(hi=="R".AND.hj=="R".AND.B(i,j)/=0.0) THEN
+                                READ(names(i),'(2a,1a)') ti,hi
+                                READ(names(j),'(2a,1a)') tj,hj
+                                IF(((hi=="R".AND.hj=="R").OR.(hi=="R".AND.tj=="O_").OR.(hj=="R".AND.ti=="O_")).AND.B(i,j)/=0.0) THEN
                                         B(i,j)=1.5
                                 END IF
                         END DO

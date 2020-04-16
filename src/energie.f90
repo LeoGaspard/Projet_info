@@ -273,7 +273,7 @@ MODULE energie
                 DO i=1,SIZE(names)-1
                         DO j=i+1,SIZE(names)
                                 d = distance(positions(i,:),positions(j,:))
-                                IF (d.LT.5 .AND. adj(i,j)==0) THEN
+                                IF (d.LT.20 .AND. adj(i,j)==0) THEN
                                         DO l=1,SIZE(names)
                                                 IF(adj(i,l)==1 .AND. adj(j,l)==1) THEN
                                                         EXIT
@@ -320,9 +320,8 @@ MODULE energie
 SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk)
         CHARACTER(len=5), INTENT(IN)                    :: j,k,i,l
         INTEGER, INTENT(IN)                             :: nj,nk
-        REAL, INTENT(IN)                                :: bjk
         INTEGER, INTENT(INOUT)                          :: n
-        REAL, INTENT(IN)                                :: vj,vk,uj,uk
+        REAL, INTENT(IN)                                :: vj,vk,uj,uk,bjk
         REAL                                            :: nvj,nvk
         REAL, INTENT(INOUT)                             :: phi0,v
         REAL                                            :: pi
@@ -341,7 +340,7 @@ SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk)
         !Check for sp3-sp3 generic case
         IF(hj=='3' .AND. hk=='3') THEN
                 n = 3
-                phi0 = pi
+                phi0 = pi/3
                 IF((tj=='O_' .OR. tj=='Te' .OR. tj=='Se' .OR. tj=='Po' .OR. tj=='S_') .AND.&
                  & (tk=='O_' .OR. tk=='S_' .OR. tk=='Se' .OR. tk=='Te'.OR. tk=='Po')) THEN
                         nvj = 6.8
@@ -356,8 +355,10 @@ SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk)
                 END IF
                 v = SQRT(vj*vk)
         !Check for sp2-sp2 generic case
-        ELSE IF(hj=='2' .AND. hk=='2') THEN
-                v = 5*SQRT(uj*uk)*(1+4.18*LOG(REAL(bjk)))
+        ELSE IF((hj=='2' .OR. hj=='R').AND. (hk=='2'.OR.hk=='R')) THEN
+                v = 5*SQRT(uj*uk)*(1+4.18*LOG(bjk))
+                n = 2
+                phi0 = pi
         !Check for the sp2-sp3 case
         ELSE IF(((hj=='2'.OR.hj=='R') .AND. hk=='3') .OR. (hj=='3' .AND. (hk=='2'.OR.hj=='R'))) THEN
                 n = 6
@@ -367,14 +368,14 @@ SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk)
                         IF(tk/='O_' .OR. tk/='Te' .OR. tk/='Se' .OR. tk/='Po' .OR. tk/='S_') THEN
                                 n = 2
                                 phi0 = pi/2
-                                V = 5*SQRT(uj*uk)*(1+4.18*LOG(REAL(bjk)))
+                                V = 5*SQRT(uj*uk)*(1+4.18*LOG(bjk))
                         END IF
                 END IF
                 IF((tk=='O_' .OR. tk=='Te' .OR. tk=='Se' .OR. tk=='Po' .OR. tk=='S_').AND.hk=='3') THEN
                         IF(tj/='O_' .OR. tj/='Te' .OR. tj/='Se' .OR. tj/='Po' .OR. tj/='S_') THEN
                                 n = 2
                                 phi0 = pi/2
-                                V = 5*SQRT(uj*uk)*(1+4.18*LOG(REAL(bjk)))
+                                V = 5*SQRT(uj*uk)*(1+4.18*LOG(bjk))
                         END IF
                 END IF
                 IF(hj=='2') THEN
@@ -392,8 +393,8 @@ SUBROUTINE find_barrier(j,k,bjk,n,phi0,v,nj,nk,i,l,vj,vk,uj,uk)
                         END IF
                 END IF
         ELSE
-                v = 0
-                n = 0
+                v = 1
+                n = 6
                 phi0 = 0
         END IF
 END SUBROUTINE
@@ -481,6 +482,131 @@ REAL FUNCTION torsion_energy(names,B,positions, D,prop,types)
         END DO
         torsion_energy = torsion_energy/2
 END FUNCTION
+        !INPUT :
+        !		-Kf : real, force constant
+        !		-C0,C1,C2 : integers, parameters
+        !		-omega : real, variable, improper angle.
+        !OPERATION :
+        !		computes the improper torsion energy
+        !RESULTS :
+        !		real, the energy
+	REAL FUNCTION e_improper(i,j,k,l,omega)
+
+                CHARACTER(LEN=5)                ::i,j,k,l
+		REAL, INTENT(IN)                ::omega
+                REAL                            ::C0,C1,C2
+		REAL                            ::Kf,eimproper
+                CALL improper_parameters(i,j,k,l,c0,c1,c2,Kf)
+
+                eimproper=Kf*(C0+C1*COS(omega)+C2*COS(2*omega))
+        END FUNCTION
+        
+        !INPUT 	   :
+        !	   -i,j,k,l : name (len=5) of the atoms 1,j,k,l, i being the central atom bonded to the 3 others
+        !OPERATION :
+        !	   gives the values of the parameters Kf,C0,C1 and C2 in function of the nature of the atoms
+        !RESUTS    :
+        !	   the parameters		
+        SUBROUTINE improper_parameters(i,j,k,l,c0,c1,c2,Kf)
+                
+                CHARACTER(len=5),INTENT(IN)              :: i,j,k,l
+                CHARACTER(len=2)                         :: ti,tj,tk,tl
+                CHARACTER(len=1)                         :: hi
+                REAL                                     :: Kf
+		REAL                                     :: pi,C0,C1,C2
+                pi=3.14159265359
+
+                READ(i,'(2a,1a)') ti,hi               !ti: type for the atom i 
+                READ(j,'(2a)') tj
+                READ(k,'(2a)') tk
+                READ(l,'(2a)') tl
+
+
+                IF(ti=='C_' .AND. (hi=='R' .OR. hi=='2')) THEN
+                        IF(tj=='O_' .OR. tk=='O_' .OR. tl=='O_' .OR. tj=='N_' .OR. tk=='N_' .OR. tl=='N_') THEN
+                                Kf=50.0
+                                C0=1
+                                C1=-1
+                                C2=0
+                        ELSE
+                                Kf=6.0
+                                C0=1
+                                C1=-1
+                                C2=0
+                        END IF
+
+                ELSE IF (ti=='P_') THEN
+                        C2=1
+                        C1=-4*COS(84.4339*pi/180)
+                        C0=-(C1*COS(84.4339*pi/180)+C2*COS(2*84.4339*pi/180))
+                        Kf=22.0/(C0+C1+C2)
+
+                ELSE IF (ti=='As') THEN
+                        C2=1
+                        C1=-4*COS(86.9735*pi/180)
+                        C0=-(C1*COS(86.9735*pi/180)+C2*COS(2*86.9735*pi/180))
+                        Kf=22.0/(C0+C1+C2)
+
+                ELSE IF (ti=='Sb') THEN
+                        C2=1
+                        C1=-4*COS(87.7047*pi/180)
+                        C0=-(C1*COS(87.7047*pi/180)+C2*COS(2*87.7047*pi/180))
+                        Kf=22/(C0+C1+C2)
+
+                ELSE IF (ti=='Bi') THEN
+                        C2=1
+                        C1=-4*COS(pi/2)
+                        C0=-(C1*COS(pi/2)+C2*COS(pi))
+                        Kf=22.0/(C0+C1+C2)
+                ELSE
+                        Kf=0.0
+                        C0=0
+                        C1=0
+                        C2=0
+                END IF
+
+        END SUBROUTINE
+
+        ! INPUT     :
+        !               - positions : matrix of real, contain the atomic positions
+        !               - B         : matrix of integer, bond order matrix
+        !               - names     : list of character, atomic UFF type
+        ! OPERATION :
+        !               Loop over all atom quadruplets to compute improper torsion energy energy
+        ! RETURN    :
+        !               Real, sum of all the angle bend energy   
+        REAL FUNCTION improper_energy(positions,B,names)
+                USE math
+
+                CHARACTER(len=5), DIMENSION(:), INTENT(IN) :: names
+                REAL, DIMENSION(:,:), INTENT(IN)           :: B,positions
+		REAL                                       :: omega
+                INTEGER                                    :: i,j,k,l
+                
+                improper_energy=0
+                DO i=1,SIZE(names)
+                        DO j=1,SIZE(names)
+                                IF(B(i,j)/=0) THEN
+                                        DO k=1,SIZE(names)
+                                                IF(B(i,k)/=0 .AND. j/=k) THEN
+                                                        DO l=1,SIZE(names)
+                                                                IF(B(i,l)/=0 .AND. j/=l .AND. l/=k) THEN
+                                                                        omega=improper(positions(i,:)&
+                                                                        &,positions(j,:),positions(k,:)&
+                                                                        &,positions(l,:))
+                                                                        improper_energy=improper_energy &
+                                                                        & +e_improper(names(i),names(j),&
+                                                                        &names(k),names(l),omega)
+                                                                END IF
+                                                        END DO
+                                                END IF
+                                        END DO
+                                END IF
+                        END DO
+                END DO
+        improper_energy=improper_energy/6
+        END FUNCTION
+
 
 END MODULE
 

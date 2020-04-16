@@ -14,7 +14,7 @@ PROGRAM test
         REAL, DIMENSION(:,:), ALLOCATABLE             :: prop
         CHARACTER(len=2), DIMENSION(10)               :: atomList
         REAL, DIMENSION(10,2)                         :: minMax
-        REAL                                          :: benergy,aenergy,vdwenergy,tenergy
+        REAL                                          :: benergy,aenergy,vdwenergy,tenergy,ienergy
         INTEGER, DIMENSION(:), ALLOCATABLE            :: discovered
 
 
@@ -27,12 +27,12 @@ PROGRAM test
         OPEN(UNIT=outfile,FILE=outname)
 
         CALL read_xyz(fName,positions,names,nAtom)
-        CALL write_positions(outfile,positions,names)
         CALL connectivity(D,positions,names,nAtom)
         CALL bond_order(D,names,B)
-        CALL atom_type_assign(D,names,nAtom)
+        CALL atom_type_assign(D,B,names,nAtom)
         CALL bond_order_arom(names,B)
         CALL add_element(types,names(1))
+        CALL write_positions(outfile,positions,names)
         CALL write_connectivity(outfile,B)
         DO i=2,nAtom
                 IF(.NOT. ANY(names(i) == types)) THEN
@@ -57,12 +57,16 @@ PROGRAM test
         tenergy = torsion_energy(names,B,positions,D,prop,types)
         PRINT *,tenergy
         PRINT *,'--------------------------------------------------'
+        PRINT *,'Inversion contribution to the energy             :'
+        ienergy = improper_energy(positions,B,names)
+        PRINT *,ienergy
+        PRINT *,'--------------------------------------------------'
         PRINT *,'Van der Waals contribution to the energy         :'
         vdwenergy = vdw_energy(positions,names,types,prop,D)
         PRINT *,vdwenergy
         PRINT *,'--------------------------------------------------'
         PRINT *,'TOTAL ENERGY                                     :'
-        PRINT *,benergy+aenergy+tenergy+vdwenergy
+        PRINT *,benergy+aenergy+tenergy+vdwenergy+ienergy
 
 
         
